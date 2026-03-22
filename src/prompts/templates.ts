@@ -2,14 +2,13 @@ import type { Framework, Styling } from "../types.js";
 
 export function getConversionTemplate(
   html: string,
-  css: string,
   framework: Framework,
   styling: Styling
 ): string {
   const frameworkInstructions = FRAMEWORK_INSTRUCTIONS[framework];
   const stylingInstructions = STYLING_INSTRUCTIONS[styling];
 
-  return `Convert the following HTML/CSS design into a ${framework} component using ${styling} for styling.
+  return `Convert the following HTML design (which may contain inline <style> blocks) into a ${framework} component using ${styling} for styling.
 
 ${frameworkInstructions}
 
@@ -17,9 +16,6 @@ ${stylingInstructions}
 
 === SOURCE HTML ===
 ${html}
-
-=== SOURCE CSS ===
-${css}
 
 === END SOURCE ===
 
@@ -77,7 +73,6 @@ export function getIterationTemplate(
   previousCode: string,
   feedback: string,
   html: string,
-  css: string,
   framework: Framework,
   styling: Styling
 ): string {
@@ -88,9 +83,6 @@ ${previousCode}
 
 === UPDATED DESIGN HTML ===
 ${html}
-
-=== UPDATED DESIGN CSS ===
-${css}
 
 === FEEDBACK ===
 ${feedback}

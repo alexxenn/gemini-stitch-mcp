@@ -10,7 +10,7 @@ export async function designToCode(
   gemini: GeminiClient,
   stitch: StitchClient,
   cache: ScreenCache,
-  pipelineStore: Map<string, PipelineContext>,
+  pipelineStore: { get(key: string): PipelineContext | undefined; set(key: string, value: PipelineContext): void },
   params: DesignToCodeParams
 ) {
   const {
@@ -22,13 +22,13 @@ export async function designToCode(
 
   // Step 1: Generate design via Stitch
   const screen = await stitch.generateScreen(prompt);
-  cache.set(`screen:${screen.screenId}`, screen);
+  cache.set(`screen:${screen.id}`, screen);
 
-  // Step 2: Extract HTML/CSS
-  const { html, css } = await stitch.getScreenHtml(screen.screenId);
+  // Step 2: Extract HTML content
+  const { html } = await stitch.getScreenHtml(screen.id, screen.projectId);
 
   // Step 3: Convert to component via Gemini
-  const conversionPrompt = getConversionTemplate(html, css, framework, styling);
+  const conversionPrompt = getConversionTemplate(html, framework, styling);
   const generatedCode = await gemini.generate(conversionPrompt, {
     model: model ?? "gemini-3.1-pro-preview",
     systemPrompt: HTML_TO_COMPONENT_PROMPT,
@@ -41,11 +41,10 @@ export async function designToCode(
     prompt,
     framework,
     styling,
-    screenId: screen.screenId,
+    screenId: screen.id,
     projectId: screen.projectId,
-    previewUrl: screen.previewUrl,
+    imageUrl: screen.imageUrl,
     rawHtml: html,
-    rawCss: css,
     generatedCode,
     model: gemini.resolveModel(model ?? "gemini-3.1-pro-preview"),
     iterations: [],
@@ -56,8 +55,8 @@ export async function designToCode(
 
   return {
     contextId,
-    screenId: screen.screenId,
-    previewUrl: screen.previewUrl,
+    screenId: screen.id,
+    imageUrl: screen.imageUrl,
     code: generatedCode,
     framework,
     styling,

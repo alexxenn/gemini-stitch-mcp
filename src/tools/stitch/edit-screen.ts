@@ -1,5 +1,5 @@
 import type { StitchClient } from "../../clients/stitch-client.js";
-import type { EditScreenParams } from "../../types.js";
+import type { EditScreenParams, StitchScreen } from "../../types.js";
 import { ScreenCache } from "../../cache/screen-cache.js";
 
 export async function stitchEditScreen(
@@ -9,15 +9,21 @@ export async function stitchEditScreen(
 ) {
   const { screenId, instructions } = params;
 
-  const screen = await client.editScreen(screenId, instructions);
-  cache.set(`screen:${screen.screenId}`, screen);
+  // Resolve projectId from cached screen metadata
+  const screenMeta = cache.get<StitchScreen>(`screen:${screenId}`);
+  const projectId = screenMeta?.projectId;
+
+  const screen = await client.editScreen(screenId, instructions, projectId);
+  cache.set(`screen:${screen.id}`, screen);
+
   // Invalidate cached HTML since screen changed
   cache.delete(`html:${screenId}:true`);
   cache.delete(`html:${screenId}:false`);
 
   return {
-    screenId: screen.screenId,
-    previewUrl: screen.previewUrl,
-    name: screen.name,
+    screenId: screen.id,
+    imageUrl: screen.imageUrl,
+    title: screen.title,
+    htmlUrl: screen.htmlUrl,
   };
 }

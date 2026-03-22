@@ -18,19 +18,17 @@ export interface OAuthTokens {
 }
 
 export interface StitchScreen {
-  screenId: string;
+  id: string;
   projectId: string;
-  name: string;
-  previewUrl?: string;
-  html?: string;
-  css?: string;
-  createdAt: string;
+  title: string;
+  htmlUrl?: string;
+  imageUrl?: string;
+  createTime?: string;
 }
 
 export interface StitchProject {
-  projectId: string;
-  name: string;
-  screens: string[];
+  id: string;
+  title: string;
 }
 
 export interface PipelineContext {
@@ -40,9 +38,8 @@ export interface PipelineContext {
   styling: Styling;
   screenId: string;
   projectId: string;
-  previewUrl?: string;
+  imageUrl?: string;
   rawHtml: string;
-  rawCss: string;
   generatedCode: string;
   model: GeminiModel;
   iterations: PipelineIteration[];
@@ -53,7 +50,6 @@ export interface PipelineIteration {
   feedback: string;
   screenId: string;
   rawHtml: string;
-  rawCss: string;
   generatedCode: string;
   timestamp: number;
 }
@@ -102,7 +98,14 @@ export interface EditScreenParams {
 
 export interface GetVariantsParams {
   screenId: string;
+  prompt?: string;
   count?: number;
+  creativeRange?: "REFINE" | "EXPLORE" | "REIMAGINE";
+  aspects?: string[];
+}
+
+export interface GetImageParams {
+  screenId: string;
 }
 
 export interface ListScreensParams {

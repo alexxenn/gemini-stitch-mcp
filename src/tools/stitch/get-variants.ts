@@ -7,19 +7,25 @@ export async function stitchGetVariants(
   cache: ScreenCache,
   params: GetVariantsParams
 ) {
-  const { screenId, count = 3 } = params;
+  const { screenId, prompt, count = 3, creativeRange, aspects } = params;
 
-  const variants = await client.getVariants(screenId, count);
+  const variants = await client.getVariants(screenId, {
+    prompt,
+    count,
+    creativeRange,
+    aspects,
+  });
 
   for (const v of variants) {
-    cache.set(`screen:${v.screenId}`, v);
+    cache.set(`screen:${v.id}`, v);
   }
 
   return {
     variants: variants.map((v) => ({
-      screenId: v.screenId,
-      previewUrl: v.previewUrl,
-      name: v.name,
+      screenId: v.id,
+      imageUrl: v.imageUrl,
+      title: v.title,
+      htmlUrl: v.htmlUrl,
     })),
   };
 }

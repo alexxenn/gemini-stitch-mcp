@@ -8,6 +8,7 @@ import { GeminiClient } from "./clients/gemini-client.js";
 import { StitchClient } from "./clients/stitch-client.js";
 import { ScreenCache } from "./cache/screen-cache.js";
 import type { PipelineContext } from "./types.js";
+import { logger } from "./utils/logger.js";
 
 // Tool implementations
 import { geminiGenerateUI } from "./tools/gemini/generate-ui.js";
@@ -20,8 +21,49 @@ import { stitchGetHtml } from "./tools/stitch/get-html.js";
 import { stitchEditScreen } from "./tools/stitch/edit-screen.js";
 import { stitchGetVariants } from "./tools/stitch/get-variants.js";
 import { stitchListScreens } from "./tools/stitch/list-screens.js";
+import { stitchGetImage } from "./tools/stitch/get-image.js";
 import { designToCode } from "./tools/pipeline/design-to-code.js";
 import { iterateDesign } from "./tools/pipeline/iterate-design.js";
+
+const PIPELINE_STORE_MAX_SIZE = 100;
+
+/**
+ * Bounded Map for pipeline contexts. When the store exceeds
+ * PIPELINE_STORE_MAX_SIZE, the oldest entries (by createdAt) are evicted.
+ */
+class BoundedPipelineStore {
+  private store = new Map<string, PipelineContext>();
+
+  get(key: string): PipelineContext | undefined {
+    return this.store.get(key);
+  }
+
+  set(key: string, value: PipelineContext): void {
+    this.store.set(key, value);
+    this.evictIfNeeded();
+  }
+
+  private evictIfNeeded(): void {
+    if (this.store.size <= PIPELINE_STORE_MAX_SIZE) return;
+
+    const entries = [...this.store.entries()].sort(
+      (a, b) => a[1].createdAt - b[1].createdAt
+    );
+
+    const toRemove = entries.length - PIPELINE_STORE_MAX_SIZE;
+    for (let i = 0; i < toRemove; i++) {
+      this.store.delete(entries[i][0]);
+    }
+
+    logger.debug("pipeline-store", `Evicted ${toRemove} old pipeline context(s)`, {
+      size: this.store.size,
+    });
+  }
+
+  get size(): number {
+    return this.store.size;
+  }
+}
 
 async function main() {
   const config = loadConfig();
@@ -31,12 +73,17 @@ async function main() {
   const gemini = new GeminiClient(config, auth);
   const stitch = new StitchClient(config, auth);
   const cache = new ScreenCache();
-  const pipelineStore = new Map<string, PipelineContext>();
+  const pipelineStore = new BoundedPipelineStore();
 
   const server = new McpServer({
     name: "gemini-stitch-mcp",
     version: "1.0.0",
   });
+
+  // === Input length limits ===
+  // 500KB max for large content (code, prompts); 10KB for short-form fields
+  const MAX_PROMPT_LEN = 500_000;
+  const MAX_SHORT_LEN = 10_000;
 
   // === Gemini Tools ===
 
@@ -44,10 +91,10 @@ async function main() {
     "gemini_generate_ui",
     "Generate a UI component from a text prompt using Gemini. Returns production-ready code for React, Vue, or HTML.",
     {
-      prompt: z.string().describe("Description of the UI component to generate"),
+      prompt: z.string().max(MAX_PROMPT_LEN).describe("Description of the UI component to generate"),
       framework: z.enum(["react", "vue", "html"]).optional().describe("Target framework (default: react)"),
       styling: z.enum(["tailwind", "css", "styled-components"]).optional().describe("Styling approach (default: tailwind)"),
-      componentType: z.string().optional().describe("Component type hint (e.g., 'form', 'card', 'dashboard')"),
+      componentType: z.string().max(200).optional().describe("Component type hint (e.g., 'form', 'card', 'dashboard')"),
       model: z.enum(["gemini-3.1-pro-preview", "gemini-3.1-flash-lite-preview", "gemini-2.5-pro", "gemini-2.5-flash"]).optional().describe("Gemini model (default: gemini-3.1-pro-preview)"),
     },
     async ({ prompt, framework, styling, componentType, model }) => {
@@ -64,8 +111,8 @@ async function main() {
     "gemini_refine_code",
     "Refine and improve existing frontend code using Gemini. Provide code and improvement instructions.",
     {
-      code: z.string().describe("The existing code to refine"),
-      instructions: z.string().describe("What improvements to make"),
+      code: z.string().max(MAX_PROMPT_LEN).describe("The existing code to refine"),
+      instructions: z.string().max(MAX_SHORT_LEN).describe("What improvements to make"),
       model: z.enum(["gemini-3.1-pro-preview", "gemini-3.1-flash-lite-preview", "gemini-2.5-pro", "gemini-2.5-flash"]).optional().describe("Gemini model (default: gemini-3.1-flash-lite-preview)"),
     },
     async ({ code, instructions, model }) => {
@@ -82,7 +129,7 @@ async function main() {
     "gemini_review_ui",
     "Review UI code for accessibility, responsiveness, and best practices using Gemini.",
     {
-      code: z.string().describe("The UI code to review"),
+      code: z.string().max(MAX_PROMPT_LEN).describe("The UI code to review"),
       checkAccessibility: z.boolean().optional().describe("Check WCAG accessibility (default: true)"),
       checkResponsiveness: z.boolean().optional().describe("Check responsive design (default: true)"),
       model: z.enum(["gemini-3.1-pro-preview", "gemini-3.1-flash-lite-preview", "gemini-2.5-pro", "gemini-2.5-flash"]).optional().describe("Gemini model (default: gemini-3.1-pro-preview)"),
@@ -101,8 +148,8 @@ async function main() {
     "gemini_chat",
     "Chat with Gemini about frontend development topics. Good for brainstorming and Q&A.",
     {
-      message: z.string().describe("Your question or message"),
-      context: z.string().optional().describe("Additional context (e.g., code snippet, project details)"),
+      message: z.string().max(MAX_PROMPT_LEN).describe("Your question or message"),
+      context: z.string().max(MAX_PROMPT_LEN).optional().describe("Additional context (e.g., code snippet, project details)"),
       model: z.enum(["gemini-3.1-pro-preview", "gemini-3.1-flash-lite-preview", "gemini-2.5-pro", "gemini-2.5-flash"]).optional().describe("Gemini model (default: gemini-3.1-flash-lite-preview)"),
     },
     async ({ message, context, model }) => {
@@ -119,8 +166,8 @@ async function main() {
     "gemini_prompt",
     "Send any prompt to Gemini and get a response. General-purpose access to Gemini models from within Claude Code — use this to delegate any task to Gemini (code generation, analysis, writing, brainstorming, etc.).",
     {
-      prompt: z.string().describe("The prompt to send to Gemini"),
-      systemPrompt: z.string().optional().describe("Optional system prompt to set Gemini's behavior"),
+      prompt: z.string().max(MAX_PROMPT_LEN).describe("The prompt to send to Gemini"),
+      systemPrompt: z.string().max(MAX_PROMPT_LEN).optional().describe("Optional system prompt to set Gemini's behavior"),
       model: z.enum(["gemini-3.1-pro-preview", "gemini-3.1-flash-lite-preview", "gemini-2.5-pro", "gemini-2.5-flash"]).optional().describe("Gemini model (default: uses GEMINI_DEFAULT_MODEL)"),
     },
     async ({ prompt, systemPrompt, model }) => {
@@ -139,7 +186,7 @@ async function main() {
     "stitch_generate_screen",
     "Generate a UI design screen using Google Stitch from a text description.",
     {
-      prompt: z.string().describe("Description of the UI design to generate"),
+      prompt: z.string().max(MAX_SHORT_LEN).describe("Description of the UI design to generate"),
       projectId: z.string().optional().describe("Stitch project ID (auto-creates if not provided)"),
     },
     async ({ prompt, projectId }) => {
@@ -154,10 +201,10 @@ async function main() {
 
   server.tool(
     "stitch_get_html",
-    "Extract raw HTML and CSS from a Stitch screen design.",
+    "Extract raw HTML from a Stitch screen design. Fetches content from the Stitch download URL.",
     {
       screenId: z.string().describe("The Stitch screen ID"),
-      minify: z.boolean().optional().describe("Minify the output HTML/CSS (default: false)"),
+      minify: z.boolean().optional().describe("Minify the output HTML (default: false)"),
     },
     async ({ screenId, minify }) => {
       try {
@@ -174,7 +221,7 @@ async function main() {
     "Edit an existing Stitch screen design with text instructions.",
     {
       screenId: z.string().describe("The Stitch screen ID to edit"),
-      instructions: z.string().describe("Editing instructions (e.g., 'change the header color to blue')"),
+      instructions: z.string().max(MAX_SHORT_LEN).describe("Editing instructions (e.g., 'change the header color to blue')"),
     },
     async ({ screenId, instructions }) => {
       try {
@@ -188,14 +235,17 @@ async function main() {
 
   server.tool(
     "stitch_get_variants",
-    "Generate design variations of an existing Stitch screen.",
+    "Generate design variations of an existing Stitch screen with control over creativity.",
     {
       screenId: z.string().describe("The Stitch screen ID to generate variants from"),
-      count: z.number().optional().describe("Number of variants (default: 3)"),
+      prompt: z.string().max(MAX_SHORT_LEN).optional().describe("Optional prompt to guide variant generation"),
+      count: z.number().int().min(1).max(10).optional().describe("Number of variants, 1-10 (default: 3)"),
+      creativeRange: z.enum(["REFINE", "EXPLORE", "REIMAGINE"]).optional().describe("How different variants should be (default: EXPLORE)"),
+      aspects: z.array(z.string()).optional().describe("Aspects to vary, e.g. COLOR_SCHEME, LAYOUT"),
     },
-    async ({ screenId, count }) => {
+    async ({ screenId, prompt, count, creativeRange, aspects }) => {
       try {
-        const result = await stitchGetVariants(stitch, cache, { screenId, count });
+        const result = await stitchGetVariants(stitch, cache, { screenId, prompt, count, creativeRange, aspects });
         return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
       } catch (e) {
         return { content: [{ type: "text" as const, text: `Error: ${(e as Error).message}` }], isError: true };
@@ -219,13 +269,29 @@ async function main() {
     }
   );
 
+  server.tool(
+    "stitch_get_image",
+    "Get the screenshot/preview image URL for a Stitch screen design.",
+    {
+      screenId: z.string().describe("The Stitch screen ID"),
+    },
+    async ({ screenId }) => {
+      try {
+        const result = await stitchGetImage(stitch, cache, { screenId });
+        return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+      } catch (e) {
+        return { content: [{ type: "text" as const, text: `Error: ${(e as Error).message}` }], isError: true };
+      }
+    }
+  );
+
   // === Pipeline Tools ===
 
   server.tool(
     "design_to_code",
-    "Full design-to-code pipeline: generates a Stitch design, extracts HTML/CSS, and converts to a production React/Vue/HTML component via Gemini. Returns contextId for iteration.",
+    "Full design-to-code pipeline: generates a Stitch design, extracts HTML, and converts to a production React/Vue/HTML component via Gemini. Returns contextId for iteration.",
     {
-      prompt: z.string().describe("Description of the UI to design and code"),
+      prompt: z.string().max(MAX_SHORT_LEN).describe("Description of the UI to design and code"),
       framework: z.enum(["react", "vue", "html"]).optional().describe("Target framework (default: react)"),
       styling: z.enum(["tailwind", "css", "styled-components"]).optional().describe("Styling approach (default: tailwind)"),
       model: z.enum(["gemini-3.1-pro-preview", "gemini-3.1-flash-lite-preview", "gemini-2.5-pro", "gemini-2.5-flash"]).optional().describe("Gemini model for code conversion (default: gemini-3.1-pro-preview)"),
@@ -245,7 +311,7 @@ async function main() {
     "Iterate on a previous design_to_code result. Applies feedback to the Stitch design and re-generates the component code.",
     {
       contextId: z.string().describe("The contextId from a previous design_to_code call"),
-      feedback: z.string().describe("What to change (e.g., 'add a forgot password link', 'make the header sticky')"),
+      feedback: z.string().max(MAX_SHORT_LEN).describe("What to change (e.g., 'add a forgot password link', 'make the header sticky')"),
       model: z.enum(["gemini-3.1-pro-preview", "gemini-3.1-flash-lite-preview", "gemini-2.5-pro", "gemini-2.5-flash"]).optional().describe("Gemini model override for this iteration"),
     },
     async ({ contextId, feedback, model }) => {
@@ -261,10 +327,30 @@ async function main() {
   // Start the server
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("[gemini-stitch-mcp] Server started successfully");
+  logger.info("server", "Server started successfully");
+
+  // Graceful shutdown handler
+  const shutdown = async (signal: string) => {
+    logger.info("server", `Received ${signal}, shutting down gracefully`);
+    try {
+      await server.close();
+      logger.info("server", "MCP server connection closed");
+    } catch (err) {
+      logger.error("server", "Error during shutdown", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+    process.exit(0);
+  };
+
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
 }
 
 main().catch((error) => {
-  console.error("[gemini-stitch-mcp] Fatal error:", error);
+  logger.error("server", "Fatal error", {
+    error: error instanceof Error ? error.message : String(error),
+    stack: error instanceof Error ? error.stack : undefined,
+  });
   process.exit(1);
 });

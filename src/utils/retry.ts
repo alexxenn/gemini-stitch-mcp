@@ -1,8 +1,13 @@
+import { ApiError } from "@google/genai";
 import type { RetryOptions } from "../types.js";
 
 function isRetryableStatus(error: unknown): boolean {
-  if (error && typeof error === "object" && "status" in error) {
-    const status = (error as { status: number }).status;
+  const status =
+    error instanceof ApiError
+      ? error.status
+      : (error as { status?: number }).status;
+
+  if (typeof status === "number") {
     return status === 429 || status >= 500;
   }
   if (error instanceof Error && error.message.includes("ECONNRESET")) {

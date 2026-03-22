@@ -1,6 +1,6 @@
 {
   "name": "gemini-stitch-mcp",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Unified MCP server for Gemini AI code generation and Google Stitch design, with pipeline tools for design-to-code workflows",
   "type": "module",
   "main": "dist/index.js",
@@ -17,7 +17,16 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "lint:fix": "eslint --fix src/",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "validate": "npm run typecheck && npm run lint && npm run build && npm run test:coverage"
   },
   "keywords": [
     "mcp",
@@ -47,7 +56,13 @@
     "google-auth-library": "^9.15.1"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^22.0.0",
-    "typescript": "^5.7.0"
+    "@vitest/coverage-v8": "^2.0.0",
+    "eslint": "^10.1.0",
+    "eslint-plugin-n": "^17.24.0",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.57.1",
+    "vitest": "^2.0.0"
   }
 }

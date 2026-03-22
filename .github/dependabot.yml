@@ -1,0 +1,55 @@
+version: 2
+
+updates:
+  # npm dependencies
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    groups:
+      # Group all @types/* packages into one PR
+      type-definitions:
+        patterns:
+          - "@types/*"
+      # Group MCP SDK updates
+      mcp-sdk:
+        patterns:
+          - "@modelcontextprotocol/*"
+      # Group Google packages
+      google:
+        patterns:
+          - "@google/*"
+          - "google-auth-library"
+    ignore:
+      # Do not auto-update major versions of core dependencies.
+      # Review these manually.
+      - dependency-name: "@modelcontextprotocol/sdk"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@google/genai"
+        update-types: ["version-update:semver-major"]
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      prefix-development: "chore"
+      include: "scope"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore"
+      include: "scope"

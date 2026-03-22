@@ -85,7 +85,7 @@ export function loadConfig(): Config {
     geminiApiKey,
     stitchApiKey,
     geminiDefaultModel: (process.env.GEMINI_DEFAULT_MODEL as GeminiModel) || "gemini-3.1-flash-lite-preview",
-    stitchApiUrl: process.env.STITCH_API_URL || "https://stitch.googleapis.com/v1",
+    stitchApiUrl: process.env.STITCH_API_URL || "https://stitch.googleapis.com/mcp",
     stitchProjectId: process.env.STITCH_PROJECT_ID,
     authMode,
   };

@@ -84,7 +84,18 @@ export class GeminiClient {
         },
       });
 
-      return response.text ?? "";
+      const text = response.text;
+      if (text === undefined || text === null) {
+        const blockReason = response.promptFeedback?.blockReason;
+        if (blockReason) {
+          throw new Error(`Gemini generation blocked by safety filters: ${blockReason}`);
+        }
+        throw new Error(
+          "Gemini returned an empty response. The request may have been blocked " +
+          "by safety filters or the model returned no text content."
+        );
+      }
+      return text;
     });
   }
 

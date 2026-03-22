@@ -43,6 +43,11 @@ export class RateLimiter {
       const next = this.queue.shift();
       next?.();
     }
+    // If items remain, schedule another check after one token refills
+    if (this.queue.length > 0) {
+      const waitMs = (1 / this.refillRate) * 1000;
+      setTimeout(() => this.processQueue(), waitMs);
+    }
   }
 }
 

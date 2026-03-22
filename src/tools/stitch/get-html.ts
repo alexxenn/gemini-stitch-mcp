@@ -1,5 +1,5 @@
 import type { StitchClient } from "../../clients/stitch-client.js";
-import type { GetHtmlParams } from "../../types.js";
+import type { GetHtmlParams, StitchScreen } from "../../types.js";
 import { ScreenCache } from "../../cache/screen-cache.js";
 
 const MAX_OUTPUT_CHARS = 8000;
@@ -12,29 +12,28 @@ export async function stitchGetHtml(
   const { screenId, minify = false } = params;
 
   const cacheKey = `html:${screenId}:${minify}`;
-  const cached = cache.get<{ html: string; css: string }>(cacheKey);
+  const cached = cache.get<{ html: string }>(cacheKey);
   if (cached) {
     return { ...cached, fromCache: true };
   }
 
-  const result = await client.getScreenHtml(screenId);
+  // Resolve projectId from cached screen metadata if available
+  const screenMeta = cache.get<StitchScreen>(`screen:${screenId}`);
+  const projectId = screenMeta?.projectId;
 
-  let { html, css } = result;
+  const result = await client.getScreenHtml(screenId, projectId);
+  let { html } = result;
 
   if (minify) {
     html = html.replace(/\s+/g, " ").replace(/>\s+</g, "><").trim();
-    css = css.replace(/\s+/g, " ").replace(/;\s+/g, ";").trim();
   }
 
-  const truncated = html.length + css.length > MAX_OUTPUT_CHARS;
-
+  const truncated = html.length > MAX_OUTPUT_CHARS;
   if (truncated) {
-    const halfMax = Math.floor(MAX_OUTPUT_CHARS / 2);
-    html = html.slice(0, halfMax);
-    css = css.slice(0, halfMax);
+    html = html.slice(0, MAX_OUTPUT_CHARS);
   }
 
-  const output = { html, css, truncated };
+  const output = { html, truncated };
   cache.set(cacheKey, output);
 
   return output;

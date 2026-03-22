@@ -5,6 +5,17 @@ import type { Config } from "../config.js";
 import { GEMINI_CLI_CREDS_PATH, GEMINI_CLI_CLIENT_ID, GEMINI_CLI_CLIENT_SECRET } from "../config.js";
 import type { OAuthTokens } from "../types.js";
 import { loadTokens, saveTokens, isTokenExpired } from "./token-store.js";
+import { logger } from "../utils/logger.js";
+
+/** Escape a string for safe embedding in HTML content. */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
 const SCOPES = [
   "https://www.googleapis.com/auth/generative-language",
@@ -18,6 +29,8 @@ export class GoogleAuth {
   private oauth2Client: OAuth2Client | null = null;
   private tokens: OAuthTokens | null = null;
   private config: Config;
+  /** Mutex: if a token refresh is in-flight, all callers await this single promise. */
+  private refreshPromise: Promise<void> | null = null;
 
   constructor(config: Config) {
     this.config = config;
@@ -25,19 +38,19 @@ export class GoogleAuth {
 
   async initialize(): Promise<void> {
     if (this.config.authMode === "api-key") {
-      console.error("[auth] Using API key mode");
+      logger.info("auth", "Using API key mode");
       return;
     }
 
     if (this.config.authMode === "gemini-cli") {
-      console.error("[auth] Using Gemini CLI credentials (~/.gemini/oauth_creds.json)");
+      logger.info("auth", "Using Gemini CLI credentials (~/.gemini/oauth_creds.json)");
       await this.loadGeminiCliTokens();
       return;
     }
 
     if (this.config.authMode === "adc") {
-      console.error("[auth] Using Application Default Credentials (ADC)");
-      console.error("[auth] If this fails, run: gcloud auth application-default login");
+      logger.info("auth", "Using Application Default Credentials (ADC)");
+      logger.info("auth", "If this fails, run: gcloud auth application-default login");
       return;
     }
 
@@ -70,7 +83,7 @@ export class GoogleAuth {
       if (isTokenExpired(this.tokens)) {
         await this.refreshAccessToken();
       }
-      console.error("[auth] Loaded existing OAuth tokens");
+      logger.info("auth", "Loaded existing OAuth tokens");
       return;
     }
 
@@ -88,7 +101,12 @@ export class GoogleAuth {
     }
 
     if (isTokenExpired(this.tokens)) {
-      await this.refreshAccessToken();
+      if (!this.refreshPromise) {
+        this.refreshPromise = this.refreshAccessToken().finally(() => {
+          this.refreshPromise = null;
+        });
+      }
+      await this.refreshPromise;
     }
 
     return this.tokens.access_token;
@@ -131,13 +149,51 @@ export class GoogleAuth {
   }
 
   private async loadGeminiCliTokens(): Promise<void> {
-    const data = await readFile(GEMINI_CLI_CREDS_PATH, "utf-8");
-    const creds = JSON.parse(data) as OAuthTokens;
+    let data: string;
+    try {
+      data = await readFile(GEMINI_CLI_CREDS_PATH, "utf-8");
+    } catch {
+      throw new Error(
+        `Cannot read Gemini CLI credentials at ${GEMINI_CLI_CREDS_PATH}. ` +
+        "Sign in first with: gemini auth login"
+      );
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(data);
+    } catch {
+      throw new Error(
+        `Gemini CLI credentials file is corrupted (invalid JSON) at ${GEMINI_CLI_CREDS_PATH}. ` +
+        "Try: gemini auth login"
+      );
+    }
+
+    if (
+      typeof parsed !== "object" ||
+      parsed === null ||
+      Array.isArray(parsed)
+    ) {
+      throw new Error(
+        `Gemini CLI credentials file has unexpected format at ${GEMINI_CLI_CREDS_PATH}. ` +
+        "Try: gemini auth login"
+      );
+    }
+
+    const creds = parsed as Record<string, unknown>;
+
+    if (typeof creds.refresh_token !== "string" || !creds.refresh_token) {
+      throw new Error(
+        `Gemini CLI credentials file is missing a valid refresh_token. ` +
+        "Try: gemini auth login"
+      );
+    }
+
     this.tokens = {
-      access_token: creds.access_token,
+      access_token: typeof creds.access_token === "string" ? creds.access_token : "",
       refresh_token: creds.refresh_token,
-      token_type: creds.token_type || "Bearer",
-      expiry_date: creds.expiry_date || 0,
+      token_type: typeof creds.token_type === "string" ? creds.token_type : "Bearer",
+      expiry_date: typeof creds.expiry_date === "number" ? creds.expiry_date : 0,
     };
 
     // Set up OAuth2Client using Gemini CLI's public client credentials
@@ -154,7 +210,7 @@ export class GoogleAuth {
     if (isTokenExpired(this.tokens)) {
       await this.refreshAccessToken();
     }
-    console.error("[auth] Gemini CLI tokens loaded successfully");
+    logger.info("auth", "Gemini CLI tokens loaded successfully");
   }
 
   private async refreshAccessToken(): Promise<void> {
@@ -176,7 +232,7 @@ export class GoogleAuth {
     };
 
     await saveTokens(this.tokens);
-    console.error("[auth] Access token refreshed");
+    logger.info("auth", "Access token refreshed");
   }
 
   private async interactiveAuth(): Promise<void> {
@@ -188,10 +244,10 @@ export class GoogleAuth {
       prompt: "consent",
     });
 
-    console.error("\n=== Google OAuth Setup ===");
-    console.error("Open this URL in your browser to authorize:");
-    console.error(authUrl);
-    console.error("Waiting for callback...\n");
+    logger.info("auth", "=== Google OAuth Setup ===");
+    logger.info("auth", "Open this URL in your browser to authorize:");
+    logger.info("auth", authUrl);
+    logger.info("auth", "Waiting for callback...");
 
     const code = await this.waitForCallback();
     const { tokens } = await this.oauth2Client.getToken(code);
@@ -210,7 +266,7 @@ export class GoogleAuth {
     });
 
     await saveTokens(this.tokens);
-    console.error("[auth] OAuth tokens saved successfully");
+    logger.info("auth", "OAuth tokens saved successfully");
   }
 
   private waitForCallback(): Promise<string> {
@@ -222,7 +278,7 @@ export class GoogleAuth {
 
         if (error) {
           res.writeHead(400, { "Content-Type": "text/html" });
-          res.end(`<h1>Auth Failed</h1><p>${error}</p>`);
+          res.end(`<h1>Auth Failed</h1><p>${escapeHtml(error)}</p>`);
           server.close();
           reject(new Error(`OAuth error: ${error}`));
           return;
@@ -241,7 +297,7 @@ export class GoogleAuth {
       });
 
       server.listen(REDIRECT_PORT, () => {
-        console.error(`[auth] Callback server listening on port ${REDIRECT_PORT}`);
+        logger.info("auth", `Callback server listening on port ${REDIRECT_PORT}`);
       });
 
       // Timeout after 5 minutes

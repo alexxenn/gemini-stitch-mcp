@@ -10,12 +10,13 @@ export async function stitchGenerateScreen(
   const { prompt, projectId } = params;
 
   const screen = await client.generateScreen(prompt, projectId);
-  cache.set(`screen:${screen.screenId}`, screen);
+  cache.set(`screen:${screen.id}`, screen);
 
   return {
-    screenId: screen.screenId,
+    screenId: screen.id,
     projectId: screen.projectId,
-    previewUrl: screen.previewUrl,
-    name: screen.name,
+    imageUrl: screen.imageUrl,
+    title: screen.title,
+    htmlUrl: screen.htmlUrl,
   };
 }

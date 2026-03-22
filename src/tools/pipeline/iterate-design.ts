@@ -9,7 +9,7 @@ export async function iterateDesign(
   gemini: GeminiClient,
   stitch: StitchClient,
   cache: ScreenCache,
-  pipelineStore: Map<string, PipelineContext>,
+  pipelineStore: { get(key: string): PipelineContext | undefined; set(key: string, value: PipelineContext): void },
   params: IterateDesignParams
 ) {
   const { contextId, feedback, model } = params;
@@ -20,11 +20,11 @@ export async function iterateDesign(
   }
 
   // Step 1: Edit the Stitch design based on feedback
-  const updatedScreen = await stitch.editScreen(context.screenId, feedback);
-  cache.set(`screen:${updatedScreen.screenId}`, updatedScreen);
+  const updatedScreen = await stitch.editScreen(context.screenId, feedback, context.projectId);
+  cache.set(`screen:${updatedScreen.id}`, updatedScreen);
 
-  // Step 2: Get updated HTML/CSS
-  const { html, css } = await stitch.getScreenHtml(updatedScreen.screenId);
+  // Step 2: Get updated HTML
+  const { html } = await stitch.getScreenHtml(updatedScreen.id, updatedScreen.projectId);
 
   // Step 3: Get the latest code (from last iteration or initial)
   const previousCode =
@@ -37,7 +37,6 @@ export async function iterateDesign(
     previousCode,
     feedback,
     html,
-    css,
     context.framework,
     context.styling
   );
@@ -50,20 +49,19 @@ export async function iterateDesign(
   // Step 5: Store iteration
   context.iterations.push({
     feedback,
-    screenId: updatedScreen.screenId,
+    screenId: updatedScreen.id,
     rawHtml: html,
-    rawCss: css,
     generatedCode,
     timestamp: Date.now(),
   });
 
   // Update screen ID if Stitch returned a new one
-  context.screenId = updatedScreen.screenId;
+  context.screenId = updatedScreen.id;
 
   return {
     contextId,
-    screenId: updatedScreen.screenId,
-    previewUrl: updatedScreen.previewUrl,
+    screenId: updatedScreen.id,
+    imageUrl: updatedScreen.imageUrl,
     code: generatedCode,
     iteration: context.iterations.length,
     framework: context.framework,

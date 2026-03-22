@@ -8,10 +8,9 @@ export async function stitchListScreens(client: StitchClient, params: ListScreen
 
   return {
     screens: screens.map((s) => ({
-      screenId: s.screenId,
-      name: s.name,
-      previewUrl: s.previewUrl,
-      createdAt: s.createdAt,
+      screenId: s.id,
+      title: s.title,
+      createTime: s.createTime,
     })),
   };
 }
