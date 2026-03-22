@@ -1,6 +1,8 @@
 import { OAuth2Client } from "google-auth-library";
 import { createServer } from "node:http";
+import { readFile } from "node:fs/promises";
 import type { Config } from "../config.js";
+import { GEMINI_CLI_CREDS_PATH, GEMINI_CLI_CLIENT_ID, GEMINI_CLI_CLIENT_SECRET } from "../config.js";
 import type { OAuthTokens } from "../types.js";
 import { loadTokens, saveTokens, isTokenExpired } from "./token-store.js";
 
@@ -24,6 +26,12 @@ export class GoogleAuth {
   async initialize(): Promise<void> {
     if (this.config.authMode === "api-key") {
       console.error("[auth] Using API key mode");
+      return;
+    }
+
+    if (this.config.authMode === "gemini-cli") {
+      console.error("[auth] Using Gemini CLI credentials (~/.gemini/oauth_creds.json)");
+      await this.loadGeminiCliTokens();
       return;
     }
 
@@ -108,6 +116,45 @@ export class GoogleAuth {
    */
   getTokens(): OAuthTokens | null {
     return this.tokens;
+  }
+
+  isGeminiCliMode(): boolean {
+    return this.config.authMode === "gemini-cli";
+  }
+
+  getGeminiCliClientId(): string {
+    return GEMINI_CLI_CLIENT_ID;
+  }
+
+  getGeminiCliClientSecret(): string {
+    return GEMINI_CLI_CLIENT_SECRET;
+  }
+
+  private async loadGeminiCliTokens(): Promise<void> {
+    const data = await readFile(GEMINI_CLI_CREDS_PATH, "utf-8");
+    const creds = JSON.parse(data) as OAuthTokens;
+    this.tokens = {
+      access_token: creds.access_token,
+      refresh_token: creds.refresh_token,
+      token_type: creds.token_type || "Bearer",
+      expiry_date: creds.expiry_date || 0,
+    };
+
+    // Set up OAuth2Client using Gemini CLI's public client credentials
+    this.oauth2Client = new OAuth2Client(
+      GEMINI_CLI_CLIENT_ID,
+      GEMINI_CLI_CLIENT_SECRET,
+    );
+    this.oauth2Client.setCredentials({
+      access_token: this.tokens.access_token,
+      refresh_token: this.tokens.refresh_token,
+      expiry_date: this.tokens.expiry_date,
+    });
+
+    if (isTokenExpired(this.tokens)) {
+      await this.refreshAccessToken();
+    }
+    console.error("[auth] Gemini CLI tokens loaded successfully");
   }
 
   private async refreshAccessToken(): Promise<void> {

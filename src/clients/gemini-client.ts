@@ -13,6 +13,23 @@ export class GeminiClient {
     if (config.authMode === "api-key" && config.geminiApiKey) {
       // Simplest: direct Gemini API with API key
       this.genai = new GoogleGenAI({ apiKey: config.geminiApiKey });
+    } else if (config.authMode === "gemini-cli") {
+      // Reuse Gemini CLI's OAuth tokens — same credentials, same usage quota.
+      // Uses the Gemini API (not Vertex AI) with authorized_user credentials.
+      const tokens = auth.getTokens();
+      if (!tokens?.refresh_token) {
+        throw new Error("Gemini CLI tokens not available. Sign in with: gemini auth login");
+      }
+      this.genai = new GoogleGenAI({
+        googleAuthOptions: {
+          credentials: {
+            type: "authorized_user",
+            client_id: auth.getGeminiCliClientId(),
+            client_secret: auth.getGeminiCliClientSecret(),
+            refresh_token: tokens.refresh_token,
+          },
+        },
+      });
     } else if (config.authMode === "adc") {
       // Zero-config: Vertex AI with Application Default Credentials.
       // Works if user has run: gcloud auth application-default login

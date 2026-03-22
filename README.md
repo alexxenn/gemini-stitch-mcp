@@ -100,14 +100,37 @@ Restart Claude Code and all 12 tools are available. No install step needed — `
 
 ## Authentication
 
-Three modes, from simplest to most powerful:
+Four modes, from simplest to most powerful:
 
 ### 1. API Key (Simplest)
 
 1. Go to [Google AI Studio](https://aistudio.google.com/app/apikey) and generate a free API key.
 2. Set `GEMINI_API_KEY` in your MCP config. Done.
 
-### 2. Application Default Credentials (Zero-Config)
+### 2. Gemini CLI (Zero-Config -- Recommended)
+
+If you already have the [Gemini CLI](https://github.com/google-gemini/gemini-cli) installed and signed in, **no configuration is needed**. The server automatically detects your Gemini CLI credentials at `~/.gemini/oauth_creds.json` and reuses the same session -- sharing your existing Gemini account usage and quota.
+
+```bash
+# If you haven't already:
+npm install -g @anthropic-ai/gemini-cli
+gemini  # follow the sign-in prompt
+```
+
+Then just add the MCP server with **no env vars** -- it auto-discovers your credentials:
+
+```json
+{
+  "mcpServers": {
+    "gemini-stitch": {
+      "command": "npx",
+      "args": ["-y", "gemini-stitch-mcp"]
+    }
+  }
+}
+```
+
+### 3. Application Default Credentials (ADC)
 
 If you already have the `gcloud` CLI installed:
 
@@ -117,7 +140,7 @@ gcloud auth application-default login
 
 Then just set `GOOGLE_CLOUD_PROJECT` in your MCP config -- no API keys or OAuth credentials needed. The server auto-discovers your credentials via Vertex AI.
 
-### 3. OAuth 2.0 (Full Access -- Gemini + Stitch)
+### 4. OAuth 2.0 (Full Access -- Gemini + Stitch)
 
 For access to both Gemini and Stitch APIs with a single token:
 
@@ -130,6 +153,19 @@ For access to both Gemini and Stitch APIs with a single token:
 ---
 
 ## Claude Code Configuration
+
+### With Gemini CLI (Recommended -- No Env Vars)
+
+```json
+{
+  "mcpServers": {
+    "gemini-stitch": {
+      "command": "npx",
+      "args": ["-y", "gemini-stitch-mcp"]
+    }
+  }
+}
+```
 
 ### With API Key
 
