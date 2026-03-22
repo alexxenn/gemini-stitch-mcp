@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="assets/banner.png" alt="gemini-stitch-mcp — Design, Code, Orchestrate" width="100%" />
+
 # gemini-stitch-mcp
 
 **The unified MCP server that turns Claude Code into a design-to-code powerhouse.**
