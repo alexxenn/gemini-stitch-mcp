@@ -8,12 +8,12 @@ export async function geminiChat(client: GeminiClient, params: ChatParams) {
   const prompt = context ? `Context:\n${context}\n\nQuestion:\n${message}` : message;
 
   const response = await client.generate(prompt, {
-    model: model ?? "gemini-2.5-flash",
+    model: model ?? "gemini-3.1-flash-lite-preview",
     systemPrompt: CHAT_PROMPT,
   });
 
   return {
     response,
-    model: client.resolveModel(model ?? "gemini-2.5-flash"),
+    model: client.resolveModel(model ?? "gemini-3.1-flash-lite-preview"),
   };
 }

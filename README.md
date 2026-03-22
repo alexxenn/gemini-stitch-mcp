@@ -1,70 +1,82 @@
+<div align="center">
+
 # gemini-stitch-mcp
 
-A unified MCP server that lets Claude Code delegate UI work to **Google Gemini** (code generation) and **Google Stitch** (visual design). Claude Code stays in control as the architect while Gemini generates frontend code and Stitch generates visual designs.
+**The unified MCP server that turns Claude Code into a design-to-code powerhouse.**
 
-**Pipeline:** Stitch (design) → Gemini (code) → Claude Code (review/integrate)
+[![npm version](https://img.shields.io/npm/v/gemini-stitch-mcp?style=flat-square&logo=npm)](https://www.npmjs.com/package/gemini-stitch-mcp)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D20-green?style=flat-square&logo=node.js)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![MCP Compatible](https://img.shields.io/badge/MCP-compatible-purple?style=flat-square)](https://modelcontextprotocol.io)
 
-## Features
+</div>
 
-- **4 Gemini tools** — Generate UI components, refine code, review accessibility/responsiveness, chat about frontend topics
-- **5 Stitch tools** — Generate screen designs, extract HTML/CSS, edit screens, get design variants, list screens
-- **2 Pipeline tools** — `design_to_code` chains Stitch→Gemini in one call; `iterate_design` refines with feedback
-- **Multi-framework** — React, Vue, and plain HTML output with Tailwind, CSS, or styled-components
-- **Smart defaults** — Gemini Pro for quality-critical generation, Flash for speed-sensitive tasks
-- **Built-in resilience** — Exponential backoff retry, per-API rate limiting, LRU caching
+## Why?
+
+Claude Code excels at architectural thinking and code orchestration -- but frontend code generation and visual design require specialized tools. Gemini generates production-ready React and Vue components at scale, while Google Stitch produces pixel-perfect design systems. This server unifies all three, letting Claude Code remain the intelligent architect while delegating UI expertise to best-in-class models. The result: designs that look pristine, code that's maintainable, and workflows that actually make sense.
+
+## The Three Pillars
+
+| Pillar | Engine | Role |
+|--------|--------|------|
+| **Design** | Google Stitch | Generate visual designs, design systems, and component mockups from text descriptions |
+| **Code** | Google Gemini | Transform designs into semantic, typed React/Vue/HTML components |
+| **Orchestrate** | Claude Code | Review code, manage architecture, integrate components, and drive the workflow |
+
+The pipeline is simple: **Stitch designs** --> **Gemini codes** --> **Claude Code reviews and integrates**. No context switching. No manual handoffs. Just seamless design-to-code.
+
+---
 
 ## Architecture
 
+The server acts as a bridge between Claude Code and Google's design/generation APIs:
+
 ```
 Claude Code
-    │ stdio (JSON-RPC 2.0)
-    ▼
+    | stdio (JSON-RPC 2.0)
+    v
 gemini-stitch-mcp server
-    ├── GeminiClient  → Gemini API (via Vertex AI or API key)
-    ├── StitchClient  → Stitch API (OAuth or API key)
-    ├── ScreenCache   → In-memory LRU (50 entries, 30min TTL)
-    └── PipelineStore → In-memory context for iteration
+    |-- GeminiClient  --> Gemini API (via Vertex AI or API key)
+    |-- StitchClient  --> Stitch API (OAuth or API key)
+    |-- ScreenCache   --> In-memory LRU (50 entries, 30min TTL)
+    +-- PipelineStore --> In-memory context for iteration
 ```
 
-## Installation
+All communication with Claude Code flows through JSON-RPC 2.0 over stdio. The server handles authentication, API orchestration, caching, rate limiting, and state management for multi-step workflows.
+
+## How the Pipeline Works
+
+The `design_to_code` tool automates the journey from design concept to production-ready code in a single call:
+
+1. **Describe** -- You tell Claude Code what you need (e.g., "Create a dark-mode login form with email and password fields").
+2. **Design** -- The server sends your prompt to Stitch, which generates a visual design mockup and returns a screen ID.
+3. **Extract** -- HTML and CSS are extracted from the Stitch screen, capturing the layout and styling.
+4. **Generate** -- The extracted markup is sent to Gemini, which produces a production-ready component in your chosen framework (React, Vue, or HTML) with your preferred styling (Tailwind, CSS, or styled-components).
+5. **Return** -- You get back three things:
+   - `contextId` -- a reference for future refinements
+   - `previewUrl` -- a link to view the Stitch design
+   - `code` -- the ready-to-use component
+
+### Iteration
+
+Once you have an initial design, refine it without starting over:
+
+```
+iterate_design({ contextId, feedback: "Make the form wider and add a forgot password link" })
+```
+
+The server retrieves cached context, sends feedback to Stitch to update the design, and runs the updated design through Gemini again. Updated code and preview URL are returned while maintaining design consistency across iterations.
+
+---
+
+## Quick Start
 
 ```bash
 npm install -g gemini-stitch-mcp
 ```
 
-Or run directly:
-
-```bash
-npx gemini-stitch-mcp
-```
-
-## Authentication
-
-Two modes are supported:
-
-### Option A: API Key (quick start)
-
-1. Get a Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey)
-2. Configure the MCP server with `GEMINI_API_KEY`
-
-### Option B: Google OAuth 2.0 (full access, both Gemini + Stitch)
-
-1. Create a Google Cloud project and enable the Gemini API
-2. Create OAuth 2.0 credentials (Desktop app type) to get a `client_id` and `client_secret`
-3. On first server start, an auth URL is printed to stderr — open it in your browser and grant consent
-4. Tokens are saved to `~/.gemini-stitch-mcp/tokens.json` and auto-refresh on subsequent starts
-
-**Required env vars for OAuth:**
-- `GOOGLE_CLIENT_ID`
-- `GOOGLE_CLIENT_SECRET`
-- `GOOGLE_CLOUD_PROJECT` — your GCP project ID
-- `GOOGLE_CLOUD_LOCATION` — (optional, defaults to `us-central1`)
-
-## Claude Code Configuration
-
-Add to your Claude Code MCP settings (`.claude/settings.json` or project `.mcp.json`):
-
-### With API key
+Add to your Claude Code MCP config:
 
 ```json
 {
@@ -80,7 +92,53 @@ Add to your Claude Code MCP settings (`.claude/settings.json` or project `.mcp.j
 }
 ```
 
-### With OAuth
+That's it. See below for OAuth setup and advanced configuration.
+
+---
+
+## Authentication
+
+### API Key (Recommended for Quick Start)
+
+1. Go to [Google AI Studio](https://aistudio.google.com/app/apikey) and generate an API key.
+2. Set `GEMINI_API_KEY` in your MCP config.
+3. Optionally set `STITCH_API_KEY` for Stitch design features.
+
+No browser flow required. Suitable for most use cases.
+
+### Google OAuth 2.0 (Full Access)
+
+Use this mode to authenticate via your Google account, granting access to both Gemini (via Vertex AI) and Stitch using the same token.
+
+1. Create a Google Cloud project at [console.cloud.google.com](https://console.cloud.google.com) and enable the Gemini API.
+2. Navigate to **APIs & Services > Credentials**, create an **OAuth 2.0 Client ID** (Desktop app type).
+3. Set environment variables: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CLOUD_PROJECT`.
+4. On first start, an authorization URL is printed to stderr. Open it in a browser and grant consent.
+5. Tokens are saved to `~/.gemini-stitch-mcp/tokens.json` and refresh automatically on subsequent starts.
+
+To skip the browser flow, set `GOOGLE_REFRESH_TOKEN` directly.
+
+---
+
+## Claude Code Configuration
+
+### npx (Recommended)
+
+```json
+{
+  "mcpServers": {
+    "gemini-stitch": {
+      "command": "npx",
+      "args": ["-y", "gemini-stitch-mcp"],
+      "env": {
+        "GEMINI_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+### npx with OAuth
 
 ```json
 {
@@ -98,14 +156,14 @@ Add to your Claude Code MCP settings (`.claude/settings.json` or project `.mcp.j
 }
 ```
 
-### Local development
+### Local Development
 
 ```json
 {
   "mcpServers": {
     "gemini-stitch": {
       "command": "node",
-      "args": ["path/to/gemini-stitch-mcp/dist/index.js"],
+      "args": ["/absolute/path/to/gemini-stitch-mcp/dist/index.js"],
       "env": {
         "GEMINI_API_KEY": "your-api-key"
       }
@@ -114,63 +172,67 @@ Add to your Claude Code MCP settings (`.claude/settings.json` or project `.mcp.j
 }
 ```
 
-## Tools
+---
+
+## Tools Reference
 
 ### Gemini Tools
 
-| Tool | Description | Default Model |
-|------|-------------|---------------|
-| `gemini_generate_ui` | Generate UI components from a text prompt | gemini-2.5-pro |
-| `gemini_refine_code` | Improve existing frontend code | gemini-2.5-flash |
-| `gemini_review_ui` | Accessibility/responsive/best-practice review | gemini-2.5-pro |
-| `gemini_chat` | Frontend development Q&A and brainstorming | gemini-2.5-flash |
+| Tool | Description | Key Parameters | Default Model |
+|------|-------------|----------------|---------------|
+| `gemini_generate_ui` | Generate UI components from a text prompt. Produces production-ready code for React, Vue, or HTML. | `prompt`, `framework`, `styling`, `componentType` | gemini-3.1-pro-preview |
+| `gemini_refine_code` | Refine and improve existing frontend code with targeted instructions. | `code`, `instructions` | gemini-3.1-flash-lite-preview |
+| `gemini_review_ui` | Review UI code for accessibility, responsiveness, and best practices. Returns structured JSON with findings. | `code`, `checkAccessibility`, `checkResponsiveness` | gemini-3.1-pro-preview |
+| `gemini_chat` | Frontend development Q&A and brainstorming. Chat interface for design questions and code patterns. | `message`, `context` | gemini-3.1-flash-lite-preview |
 
 ### Stitch Tools
 
-| Tool | Description |
-|------|-------------|
-| `stitch_generate_screen` | Generate a UI design from text |
-| `stitch_get_html` | Extract HTML/CSS from a screen |
-| `stitch_edit_screen` | Modify an existing screen |
-| `stitch_get_variants` | Generate design variations |
-| `stitch_list_screens` | List screens in a project |
+| Tool | Description | Key Parameters |
+|------|-------------|----------------|
+| `stitch_generate_screen` | Generate a UI design from a text description. | `prompt`, `projectId` |
+| `stitch_get_html` | Extract HTML and CSS from a Stitch screen. | `screenId`, `minify` |
+| `stitch_edit_screen` | Edit an existing screen with text instructions. | `screenId`, `instructions` |
+| `stitch_get_variants` | Generate design variations of a screen. | `screenId`, `count` |
+| `stitch_list_screens` | List all screens in a Stitch project. | `projectId` |
 
 ### Pipeline Tools
 
-| Tool | Description |
-|------|-------------|
-| `design_to_code` | Full pipeline: Stitch design → HTML extraction → Gemini converts to React/Vue/HTML component |
-| `iterate_design` | Take feedback, re-generate via Stitch, re-convert via Gemini |
+| Tool | Description | Key Parameters | Default Model |
+|------|-------------|----------------|---------------|
+| `design_to_code` | Full Stitch-to-Gemini pipeline. Generates design, extracts HTML/CSS, converts to production component. Returns `contextId` for iteration. | `prompt`, `framework`, `styling` | gemini-3.1-pro-preview |
+| `iterate_design` | Iterative refinement. Takes feedback, updates the Stitch design, re-generates code via Gemini. | `contextId`, `feedback` | gemini-3.1-pro-preview |
 
-## Pipeline Example
+### Supported Models
 
-```
-1. Call design_to_code with "A modern login page with email and password"
-   → Stitch generates a visual design
-   → HTML/CSS is extracted
-   → Gemini converts to a React + Tailwind component
-   → Returns: contextId, previewUrl, generated code
+Every Gemini tool accepts an optional `model` parameter. Common options:
 
-2. Call iterate_design with contextId + "add a forgot password link"
-   → Stitch updates the design
-   → Gemini re-generates the component with the change
-   → Returns: updated code, new preview
-```
+| Model | Best For |
+|-------|----------|
+| **gemini-3.1-pro-preview** | Highest quality generation and analysis |
+| **gemini-3.1-flash-lite-preview** | Fast inference, chat, and refinement |
+| **gemini-2.5-pro** | Stable production fallback |
+| **gemini-2.5-flash** | Stable fast fallback |
+
+Any valid Gemini model string can be passed. If omitted, the tool's default is used.
+
+---
 
 ## Environment Variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `GEMINI_API_KEY` | One of API key or OAuth | Gemini API key for direct access |
-| `GOOGLE_CLIENT_ID` | For OAuth | OAuth 2.0 client ID |
-| `GOOGLE_CLIENT_SECRET` | For OAuth | OAuth 2.0 client secret |
-| `GOOGLE_CLOUD_PROJECT` | For OAuth | Google Cloud project ID |
-| `GOOGLE_CLOUD_LOCATION` | No | GCP region (default: `us-central1`) |
-| `GOOGLE_REFRESH_TOKEN` | No | Pre-obtained refresh token (skips browser flow) |
-| `STITCH_API_KEY` | No | Stitch API key (alternative to OAuth) |
-| `STITCH_API_URL` | No | Stitch API base URL override |
-| `STITCH_PROJECT_ID` | No | Default Stitch project ID |
-| `GEMINI_DEFAULT_MODEL` | No | Default Gemini model (default: `gemini-2.5-flash`) |
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `GEMINI_API_KEY` | For API key mode | -- | Gemini API key from Google AI Studio |
+| `GOOGLE_CLIENT_ID` | For OAuth mode | -- | OAuth 2.0 client ID |
+| `GOOGLE_CLIENT_SECRET` | For OAuth mode | -- | OAuth 2.0 client secret |
+| `GOOGLE_CLOUD_PROJECT` | For OAuth mode | -- | Google Cloud project ID |
+| `GOOGLE_CLOUD_LOCATION` | No | `us-central1` | Google Cloud region for Vertex AI |
+| `GOOGLE_REFRESH_TOKEN` | No | -- | Pre-obtained refresh token (skips browser flow) |
+| `STITCH_API_KEY` | No | -- | Stitch API key (alternative to OAuth) |
+| `STITCH_API_URL` | No | -- | Override Stitch API endpoint |
+| `STITCH_PROJECT_ID` | No | -- | Default Stitch project ID |
+| `GEMINI_DEFAULT_MODEL` | No | `gemini-3.1-flash-lite-preview` | Default model when none specified |
+
+---
 
 ## Development
 
@@ -182,6 +244,73 @@ npm run build
 npm run dev    # watch mode
 ```
 
+### Testing the stdio server manually
+
+To test the MCP server directly without Claude Code:
+
+```bash
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' | GEMINI_API_KEY=test node dist/index.js
+```
+
+This sends a JSON-RPC 2.0 initialize request over stdio and displays the server response.
+
+## Project Structure
+
+```
+gemini-stitch-mcp/
+├── bin/
+│   └── gemini-stitch-mcp.js          # CLI entry point
+├── src/
+│   ├── index.ts                       # Server bootstrap, tool registration
+│   ├── config.ts                      # Environment validation
+│   ├── types.ts                       # Shared TypeScript interfaces
+│   ├── auth/
+│   │   ├── google-oauth.ts            # OAuth 2.0 flow
+│   │   └── token-store.ts             # Persistent token storage
+│   ├── clients/
+│   │   ├── gemini-client.ts           # @google/genai wrapper
+│   │   └── stitch-client.ts           # Stitch HTTP client
+│   ├── tools/
+│   │   ├── gemini/                    # 4 Gemini tools
+│   │   ├── stitch/                    # 5 Stitch tools
+│   │   └── pipeline/                  # 2 pipeline tools
+│   ├── prompts/
+│   │   ├── system-prompts.ts          # Curated AI prompts
+│   │   └── templates.ts               # Framework conversion templates
+│   ├── cache/
+│   │   └── screen-cache.ts            # LRU cache
+│   └── utils/
+│       ├── retry.ts                   # Exponential backoff
+│       └── rate-limiter.ts            # Token bucket rate limiter
+├── package.json
+├── tsconfig.json
+└── LICENSE
+```
+
+**Key modules:**
+- **index.ts** -- Initializes the MCP server, registers all 11 tools, and handles stdio communication
+- **config.ts** -- Validates required environment variables at startup
+- **clients/** -- Thin wrappers around Gemini API and Stitch API with error handling
+- **tools/** -- Tool implementations grouped by service (Gemini, Stitch, Pipeline)
+- **auth/** -- Handles OAuth 2.0 token lifecycle and storage
+- **cache/** -- LRU screen cache to avoid redundant Stitch API calls
+- **utils/** -- Shared retry and rate-limiting logic
+
+## Contributing
+
+We welcome issues, feature requests, and pull requests. To contribute:
+
+1. Fork the repository and create a feature branch
+2. Make your changes and run `npm run build` to verify TypeScript compilation
+3. Follow the existing code style (2-space indentation, async/await over Promise chains)
+4. Submit a pull request with a clear description of your changes
+
+Before submitting, ensure `npm run build` passes without errors.
+
 ## License
 
-MIT
+MIT License -- see the [LICENSE](LICENSE) file for details.
+
+---
+
+Built to bridge the gap between AI design and AI code generation.

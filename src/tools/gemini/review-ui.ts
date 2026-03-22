@@ -16,7 +16,7 @@ export async function geminiReviewUI(client: GeminiClient, params: ReviewUIParam
   const prompt = `Review this UI code:\n\n${code}\n\nFocus areas:\n- ${focusAreas}`;
 
   const review = await client.generate(prompt, {
-    model: model ?? "gemini-2.5-pro",
+    model: model ?? "gemini-3.1-pro-preview",
     systemPrompt: UI_REVIEW_PROMPT,
   });
 
@@ -24,6 +24,6 @@ export async function geminiReviewUI(client: GeminiClient, params: ReviewUIParam
   try {
     return JSON.parse(review);
   } catch {
-    return { review, model: client.resolveModel(model ?? "gemini-2.5-pro") };
+    return { review, model: client.resolveModel(model ?? "gemini-3.1-pro-preview") };
   }
 }

@@ -30,7 +30,7 @@ export async function designToCode(
   // Step 3: Convert to component via Gemini
   const conversionPrompt = getConversionTemplate(html, css, framework, styling);
   const generatedCode = await gemini.generate(conversionPrompt, {
-    model: model ?? "gemini-2.5-pro",
+    model: model ?? "gemini-3.1-pro-preview",
     systemPrompt: HTML_TO_COMPONENT_PROMPT,
   });
 
@@ -47,7 +47,7 @@ export async function designToCode(
     rawHtml: html,
     rawCss: css,
     generatedCode,
-    model: gemini.resolveModel(model ?? "gemini-2.5-pro"),
+    model: gemini.resolveModel(model ?? "gemini-3.1-pro-preview"),
     iterations: [],
     createdAt: Date.now(),
   };

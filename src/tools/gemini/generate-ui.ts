@@ -22,7 +22,7 @@ export async function geminiGenerateUI(client: GeminiClient, params: GenerateUIP
     .join("\n");
 
   const code = await client.generate(enrichedPrompt, {
-    model: model ?? "gemini-2.5-pro",
+    model: model ?? "gemini-3.1-pro-preview",
     systemPrompt: UI_GENERATION_PROMPT,
   });
 
@@ -30,6 +30,6 @@ export async function geminiGenerateUI(client: GeminiClient, params: GenerateUIP
     code,
     framework,
     styling,
-    model: client.resolveModel(model ?? "gemini-2.5-pro"),
+    model: client.resolveModel(model ?? "gemini-3.1-pro-preview"),
   };
 }

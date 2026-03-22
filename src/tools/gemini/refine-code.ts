@@ -8,12 +8,12 @@ export async function geminiRefineCode(client: GeminiClient, params: RefineCodeP
   const prompt = `=== EXISTING CODE ===\n${code}\n\n=== INSTRUCTIONS ===\n${instructions}`;
 
   const refined = await client.generate(prompt, {
-    model: model ?? "gemini-2.5-flash",
+    model: model ?? "gemini-3.1-flash-lite-preview",
     systemPrompt: CODE_REFINEMENT_PROMPT,
   });
 
   return {
     code: refined,
-    model: client.resolveModel(model ?? "gemini-2.5-flash"),
+    model: client.resolveModel(model ?? "gemini-3.1-flash-lite-preview"),
   };
 }

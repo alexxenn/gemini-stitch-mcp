@@ -59,7 +59,7 @@ export function loadConfig(): Config {
     googleCloudLocation: process.env.GOOGLE_CLOUD_LOCATION || "us-central1",
     geminiApiKey,
     stitchApiKey,
-    geminiDefaultModel: (process.env.GEMINI_DEFAULT_MODEL as GeminiModel) || "gemini-2.5-flash",
+    geminiDefaultModel: (process.env.GEMINI_DEFAULT_MODEL as GeminiModel) || "gemini-3.1-flash-lite-preview",
     stitchApiUrl: process.env.STITCH_API_URL || "https://stitch.googleapis.com/v1",
     stitchProjectId: process.env.STITCH_PROJECT_ID,
     authMode: hasOAuth ? "oauth" : "api-key",

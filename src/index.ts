@@ -46,7 +46,7 @@ async function main() {
       framework: z.enum(["react", "vue", "html"]).optional().describe("Target framework (default: react)"),
       styling: z.enum(["tailwind", "css", "styled-components"]).optional().describe("Styling approach (default: tailwind)"),
       componentType: z.string().optional().describe("Component type hint (e.g., 'form', 'card', 'dashboard')"),
-      model: z.string().optional().describe("Gemini model to use (default: gemini-2.5-pro)"),
+      model: z.enum(["gemini-3.1-pro-preview", "gemini-3.1-flash-lite-preview", "gemini-2.5-pro", "gemini-2.5-flash"]).optional().describe("Gemini model (default: gemini-3.1-pro-preview)"),
     },
     async ({ prompt, framework, styling, componentType, model }) => {
       try {
@@ -64,7 +64,7 @@ async function main() {
     {
       code: z.string().describe("The existing code to refine"),
       instructions: z.string().describe("What improvements to make"),
-      model: z.string().optional().describe("Gemini model (default: gemini-2.5-flash)"),
+      model: z.enum(["gemini-3.1-pro-preview", "gemini-3.1-flash-lite-preview", "gemini-2.5-pro", "gemini-2.5-flash"]).optional().describe("Gemini model (default: gemini-3.1-flash-lite-preview)"),
     },
     async ({ code, instructions, model }) => {
       try {
@@ -83,7 +83,7 @@ async function main() {
       code: z.string().describe("The UI code to review"),
       checkAccessibility: z.boolean().optional().describe("Check WCAG accessibility (default: true)"),
       checkResponsiveness: z.boolean().optional().describe("Check responsive design (default: true)"),
-      model: z.string().optional().describe("Gemini model (default: gemini-2.5-pro)"),
+      model: z.enum(["gemini-3.1-pro-preview", "gemini-3.1-flash-lite-preview", "gemini-2.5-pro", "gemini-2.5-flash"]).optional().describe("Gemini model (default: gemini-3.1-pro-preview)"),
     },
     async ({ code, checkAccessibility, checkResponsiveness, model }) => {
       try {
@@ -101,7 +101,7 @@ async function main() {
     {
       message: z.string().describe("Your question or message"),
       context: z.string().optional().describe("Additional context (e.g., code snippet, project details)"),
-      model: z.string().optional().describe("Gemini model (default: gemini-2.5-flash)"),
+      model: z.enum(["gemini-3.1-pro-preview", "gemini-3.1-flash-lite-preview", "gemini-2.5-pro", "gemini-2.5-flash"]).optional().describe("Gemini model (default: gemini-3.1-flash-lite-preview)"),
     },
     async ({ message, context, model }) => {
       try {
@@ -208,7 +208,7 @@ async function main() {
       prompt: z.string().describe("Description of the UI to design and code"),
       framework: z.enum(["react", "vue", "html"]).optional().describe("Target framework (default: react)"),
       styling: z.enum(["tailwind", "css", "styled-components"]).optional().describe("Styling approach (default: tailwind)"),
-      model: z.string().optional().describe("Gemini model for code conversion (default: gemini-2.5-pro)"),
+      model: z.enum(["gemini-3.1-pro-preview", "gemini-3.1-flash-lite-preview", "gemini-2.5-pro", "gemini-2.5-flash"]).optional().describe("Gemini model for code conversion (default: gemini-3.1-pro-preview)"),
     },
     async ({ prompt, framework, styling, model }) => {
       try {
@@ -226,7 +226,7 @@ async function main() {
     {
       contextId: z.string().describe("The contextId from a previous design_to_code call"),
       feedback: z.string().describe("What to change (e.g., 'add a forgot password link', 'make the header sticky')"),
-      model: z.string().optional().describe("Gemini model override for this iteration"),
+      model: z.enum(["gemini-3.1-pro-preview", "gemini-3.1-flash-lite-preview", "gemini-2.5-pro", "gemini-2.5-flash"]).optional().describe("Gemini model override for this iteration"),
     },
     async ({ contextId, feedback, model }) => {
       try {
