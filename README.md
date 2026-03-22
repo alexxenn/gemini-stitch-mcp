@@ -72,7 +72,11 @@ The server retrieves cached context, sends feedback to Stitch to update the desi
 
 ## Quick Start
 
-Add to your Claude Code MCP config (`.claude/settings.json` or project `.mcp.json`):
+```bash
+npm install -g gemini-stitch-mcp
+```
+
+Or use directly with `npx` — no install needed. Add to your Claude Code MCP config (`.claude/settings.json` or project `.mcp.json`):
 
 ```json
 {
