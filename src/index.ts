@@ -13,6 +13,7 @@ import { geminiGenerateUI } from "./tools/gemini/generate-ui.js";
 import { geminiRefineCode } from "./tools/gemini/refine-code.js";
 import { geminiReviewUI } from "./tools/gemini/review-ui.js";
 import { geminiChat } from "./tools/gemini/chat.js";
+import { geminiPrompt } from "./tools/gemini/prompt.js";
 import { stitchGenerateScreen } from "./tools/stitch/generate-screen.js";
 import { stitchGetHtml } from "./tools/stitch/get-html.js";
 import { stitchEditScreen } from "./tools/stitch/edit-screen.js";
@@ -106,6 +107,24 @@ async function main() {
     async ({ message, context, model }) => {
       try {
         const result = await geminiChat(gemini, { message, context, model });
+        return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+      } catch (e) {
+        return { content: [{ type: "text" as const, text: `Error: ${(e as Error).message}` }], isError: true };
+      }
+    }
+  );
+
+  server.tool(
+    "gemini_prompt",
+    "Send any prompt to Gemini and get a response. General-purpose access to Gemini models from within Claude Code — use this to delegate any task to Gemini (code generation, analysis, writing, brainstorming, etc.).",
+    {
+      prompt: z.string().describe("The prompt to send to Gemini"),
+      systemPrompt: z.string().optional().describe("Optional system prompt to set Gemini's behavior"),
+      model: z.enum(["gemini-3.1-pro-preview", "gemini-3.1-flash-lite-preview", "gemini-2.5-pro", "gemini-2.5-flash"]).optional().describe("Gemini model (default: uses GEMINI_DEFAULT_MODEL)"),
+    },
+    async ({ prompt, systemPrompt, model }) => {
+      try {
+        const result = await geminiPrompt(gemini, { prompt, systemPrompt, model });
         return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
       } catch (e) {
         return { content: [{ type: "text" as const, text: `Error: ${(e as Error).message}` }], isError: true };

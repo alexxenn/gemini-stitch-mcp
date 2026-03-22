@@ -23,7 +23,13 @@ export class GoogleAuth {
 
   async initialize(): Promise<void> {
     if (this.config.authMode === "api-key") {
-      console.error("[auth] Using API key mode — OAuth skipped");
+      console.error("[auth] Using API key mode");
+      return;
+    }
+
+    if (this.config.authMode === "adc") {
+      console.error("[auth] Using Application Default Credentials (ADC)");
+      console.error("[auth] If this fails, run: gcloud auth application-default login");
       return;
     }
 

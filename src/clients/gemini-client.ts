@@ -11,12 +11,19 @@ export class GeminiClient {
 
   constructor(config: Config, auth: GoogleAuth) {
     if (config.authMode === "api-key" && config.geminiApiKey) {
-      // Direct Gemini API with API key
+      // Simplest: direct Gemini API with API key
       this.genai = new GoogleGenAI({ apiKey: config.geminiApiKey });
+    } else if (config.authMode === "adc") {
+      // Zero-config: Vertex AI with Application Default Credentials.
+      // Works if user has run: gcloud auth application-default login
+      // The SDK's internal google-auth-library auto-discovers ADC.
+      this.genai = new GoogleGenAI({
+        vertexai: true,
+        project: config.googleCloudProject,
+        location: config.googleCloudLocation,
+      });
     } else {
-      // OAuth mode — use Vertex AI with authorized_user credentials.
-      // google-auth-library recognizes type "authorized_user" and creates
-      // a UserRefreshClient that auto-refreshes using the refresh_token.
+      // Explicit OAuth: Vertex AI with authorized_user credentials.
       const tokens = auth.getTokens();
       if (!tokens?.refresh_token) {
         throw new Error("OAuth tokens not available for Vertex AI mode");

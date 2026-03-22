@@ -72,18 +72,22 @@ The server retrieves cached context, sends feedback to Stitch to update the desi
 
 ## Quick Start
 
+Clone and build:
+
 ```bash
-npm install -g gemini-stitch-mcp
+git clone https://github.com/alexxenn/gemini-stitch-mcp.git
+cd gemini-stitch-mcp
+npm install && npm run build
 ```
 
-Add to your Claude Code MCP config:
+Add to your Claude Code MCP config (`.claude/settings.json` or project `.mcp.json`):
 
 ```json
 {
   "mcpServers": {
     "gemini-stitch": {
-      "command": "npx",
-      "args": ["-y", "gemini-stitch-mcp"],
+      "command": "node",
+      "args": ["/path/to/gemini-stitch-mcp/dist/index.js"],
       "env": {
         "GEMINI_API_KEY": "your-api-key"
       }
@@ -92,44 +96,51 @@ Add to your Claude Code MCP config:
 }
 ```
 
-That's it. See below for OAuth setup and advanced configuration.
+That's it. Restart Claude Code and all 12 tools are available. See below for other auth methods.
 
 ---
 
 ## Authentication
 
-### API Key (Recommended for Quick Start)
+Three modes, from simplest to most powerful:
 
-1. Go to [Google AI Studio](https://aistudio.google.com/app/apikey) and generate an API key.
-2. Set `GEMINI_API_KEY` in your MCP config.
-3. Optionally set `STITCH_API_KEY` for Stitch design features.
+### 1. API Key (Simplest)
 
-No browser flow required. Suitable for most use cases.
+1. Go to [Google AI Studio](https://aistudio.google.com/app/apikey) and generate a free API key.
+2. Set `GEMINI_API_KEY` in your MCP config. Done.
 
-### Google OAuth 2.0 (Full Access)
+### 2. Application Default Credentials (Zero-Config)
 
-Use this mode to authenticate via your Google account, granting access to both Gemini (via Vertex AI) and Stitch using the same token.
+If you already have the `gcloud` CLI installed:
 
-1. Create a Google Cloud project at [console.cloud.google.com](https://console.cloud.google.com) and enable the Gemini API.
-2. Navigate to **APIs & Services > Credentials**, create an **OAuth 2.0 Client ID** (Desktop app type).
-3. Set environment variables: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CLOUD_PROJECT`.
-4. On first start, an authorization URL is printed to stderr. Open it in a browser and grant consent.
-5. Tokens are saved to `~/.gemini-stitch-mcp/tokens.json` and refresh automatically on subsequent starts.
+```bash
+gcloud auth application-default login
+```
 
-To skip the browser flow, set `GOOGLE_REFRESH_TOKEN` directly.
+Then just set `GOOGLE_CLOUD_PROJECT` in your MCP config -- no API keys or OAuth credentials needed. The server auto-discovers your credentials via Vertex AI.
+
+### 3. OAuth 2.0 (Full Access -- Gemini + Stitch)
+
+For access to both Gemini and Stitch APIs with a single token:
+
+1. Create a Google Cloud project and enable the Gemini API.
+2. Create an **OAuth 2.0 Client ID** (Desktop app type) in the Cloud Console.
+3. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_CLOUD_PROJECT`.
+4. On first start, an auth URL is printed to stderr. Open it in a browser and grant consent once.
+5. Tokens are saved to `~/.gemini-stitch-mcp/tokens.json` and auto-refresh thereafter.
 
 ---
 
 ## Claude Code Configuration
 
-### npx (Recommended)
+### With API Key
 
 ```json
 {
   "mcpServers": {
     "gemini-stitch": {
-      "command": "npx",
-      "args": ["-y", "gemini-stitch-mcp"],
+      "command": "node",
+      "args": ["/path/to/gemini-stitch-mcp/dist/index.js"],
       "env": {
         "GEMINI_API_KEY": "your-api-key"
       }
@@ -138,17 +149,15 @@ To skip the browser flow, set `GOOGLE_REFRESH_TOKEN` directly.
 }
 ```
 
-### npx with OAuth
+### With Application Default Credentials
 
 ```json
 {
   "mcpServers": {
     "gemini-stitch": {
-      "command": "npx",
-      "args": ["-y", "gemini-stitch-mcp"],
+      "command": "node",
+      "args": ["/path/to/gemini-stitch-mcp/dist/index.js"],
       "env": {
-        "GOOGLE_CLIENT_ID": "your-client-id",
-        "GOOGLE_CLIENT_SECRET": "your-client-secret",
         "GOOGLE_CLOUD_PROJECT": "your-project-id"
       }
     }
@@ -156,16 +165,18 @@ To skip the browser flow, set `GOOGLE_REFRESH_TOKEN` directly.
 }
 ```
 
-### Local Development
+### With OAuth
 
 ```json
 {
   "mcpServers": {
     "gemini-stitch": {
       "command": "node",
-      "args": ["/absolute/path/to/gemini-stitch-mcp/dist/index.js"],
+      "args": ["/path/to/gemini-stitch-mcp/dist/index.js"],
       "env": {
-        "GEMINI_API_KEY": "your-api-key"
+        "GOOGLE_CLIENT_ID": "your-client-id",
+        "GOOGLE_CLIENT_SECRET": "your-client-secret",
+        "GOOGLE_CLOUD_PROJECT": "your-project-id"
       }
     }
   }
@@ -180,6 +191,7 @@ To skip the browser flow, set `GOOGLE_REFRESH_TOKEN` directly.
 
 | Tool | Description | Key Parameters | Default Model |
 |------|-------------|----------------|---------------|
+| `gemini_prompt` | **General-purpose Gemini access.** Send any prompt to Gemini from within Claude Code -- delegate code generation, analysis, writing, or any task. | `prompt`, `systemPrompt` | GEMINI_DEFAULT_MODEL |
 | `gemini_generate_ui` | Generate UI components from a text prompt. Produces production-ready code for React, Vue, or HTML. | `prompt`, `framework`, `styling`, `componentType` | gemini-3.1-pro-preview |
 | `gemini_refine_code` | Refine and improve existing frontend code with targeted instructions. | `code`, `instructions` | gemini-3.1-flash-lite-preview |
 | `gemini_review_ui` | Review UI code for accessibility, responsiveness, and best practices. Returns structured JSON with findings. | `code`, `checkAccessibility`, `checkResponsiveness` | gemini-3.1-pro-preview |
@@ -222,9 +234,9 @@ Any valid Gemini model string can be passed. If omitted, the tool's default is u
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `GEMINI_API_KEY` | For API key mode | -- | Gemini API key from Google AI Studio |
-| `GOOGLE_CLIENT_ID` | For OAuth mode | -- | OAuth 2.0 client ID |
-| `GOOGLE_CLIENT_SECRET` | For OAuth mode | -- | OAuth 2.0 client secret |
-| `GOOGLE_CLOUD_PROJECT` | For OAuth mode | -- | Google Cloud project ID |
+| `GOOGLE_CLOUD_PROJECT` | For ADC / OAuth | -- | Google Cloud project ID |
+| `GOOGLE_CLIENT_ID` | For OAuth only | -- | OAuth 2.0 client ID |
+| `GOOGLE_CLIENT_SECRET` | For OAuth only | -- | OAuth 2.0 client secret |
 | `GOOGLE_CLOUD_LOCATION` | No | `us-central1` | Google Cloud region for Vertex AI |
 | `GOOGLE_REFRESH_TOKEN` | No | -- | Pre-obtained refresh token (skips browser flow) |
 | `STITCH_API_KEY` | No | -- | Stitch API key (alternative to OAuth) |
@@ -271,7 +283,7 @@ gemini-stitch-mcp/
 │   │   ├── gemini-client.ts           # @google/genai wrapper
 │   │   └── stitch-client.ts           # Stitch HTTP client
 │   ├── tools/
-│   │   ├── gemini/                    # 4 Gemini tools
+│   │   ├── gemini/                    # 5 Gemini tools
 │   │   ├── stitch/                    # 5 Stitch tools
 │   │   └── pipeline/                  # 2 pipeline tools
 │   ├── prompts/
@@ -288,7 +300,7 @@ gemini-stitch-mcp/
 ```
 
 **Key modules:**
-- **index.ts** -- Initializes the MCP server, registers all 11 tools, and handles stdio communication
+- **index.ts** -- Initializes the MCP server, registers all 12 tools, and handles stdio communication
 - **config.ts** -- Validates required environment variables at startup
 - **clients/** -- Thin wrappers around Gemini API and Stitch API with error handling
 - **tools/** -- Tool implementations grouped by service (Gemini, Stitch, Pipeline)
