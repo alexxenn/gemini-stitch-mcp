@@ -1,6 +1,6 @@
 {
   "name": "gemini-stitch-mcp",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Unified MCP server for Gemini AI code generation and Google Stitch design, with pipeline tools for design-to-code workflows",
   "type": "module",
   "main": "dist/index.js",
