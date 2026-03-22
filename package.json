@@ -1,11 +1,11 @@
 {
   "name": "gemini-stitch-mcp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Unified MCP server for Gemini AI code generation and Google Stitch design, with pipeline tools for design-to-code workflows",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "gemini-stitch-mcp": "./bin/gemini-stitch-mcp.js"
+    "gemini-stitch-mcp": "dist/index.js"
   },
   "files": [
     "dist",
@@ -19,7 +19,15 @@
     "start": "node dist/index.js",
     "prepublishOnly": "npm run build"
   },
-  "keywords": ["mcp", "gemini", "stitch", "claude-code", "ui-generation", "google", "design-to-code"],
+  "keywords": [
+    "mcp",
+    "gemini",
+    "stitch",
+    "claude-code",
+    "ui-generation",
+    "google",
+    "design-to-code"
+  ],
   "author": "Alex",
   "license": "MIT",
   "repository": {

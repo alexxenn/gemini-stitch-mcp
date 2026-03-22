@@ -72,22 +72,14 @@ The server retrieves cached context, sends feedback to Stitch to update the desi
 
 ## Quick Start
 
-Clone and build:
-
-```bash
-git clone https://github.com/alexxenn/gemini-stitch-mcp.git
-cd gemini-stitch-mcp
-npm install && npm run build
-```
-
 Add to your Claude Code MCP config (`.claude/settings.json` or project `.mcp.json`):
 
 ```json
 {
   "mcpServers": {
     "gemini-stitch": {
-      "command": "node",
-      "args": ["/path/to/gemini-stitch-mcp/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "gemini-stitch-mcp"],
       "env": {
         "GEMINI_API_KEY": "your-api-key"
       }
@@ -96,7 +88,7 @@ Add to your Claude Code MCP config (`.claude/settings.json` or project `.mcp.jso
 }
 ```
 
-That's it. Restart Claude Code and all 12 tools are available. See below for other auth methods.
+Restart Claude Code and all 12 tools are available. No install step needed — `npx` handles it. See below for other auth methods.
 
 ---
 
@@ -139,8 +131,8 @@ For access to both Gemini and Stitch APIs with a single token:
 {
   "mcpServers": {
     "gemini-stitch": {
-      "command": "node",
-      "args": ["/path/to/gemini-stitch-mcp/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "gemini-stitch-mcp"],
       "env": {
         "GEMINI_API_KEY": "your-api-key"
       }
@@ -155,8 +147,8 @@ For access to both Gemini and Stitch APIs with a single token:
 {
   "mcpServers": {
     "gemini-stitch": {
-      "command": "node",
-      "args": ["/path/to/gemini-stitch-mcp/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "gemini-stitch-mcp"],
       "env": {
         "GOOGLE_CLOUD_PROJECT": "your-project-id"
       }
@@ -171,8 +163,8 @@ For access to both Gemini and Stitch APIs with a single token:
 {
   "mcpServers": {
     "gemini-stitch": {
-      "command": "node",
-      "args": ["/path/to/gemini-stitch-mcp/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "gemini-stitch-mcp"],
       "env": {
         "GOOGLE_CLIENT_ID": "your-client-id",
         "GOOGLE_CLIENT_SECRET": "your-client-secret",
