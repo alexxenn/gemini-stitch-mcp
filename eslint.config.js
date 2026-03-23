@@ -59,6 +59,15 @@ export default tseslint.config(
     },
   },
 
+  // src/index.ts compiles to dist/index.js which is listed in bin —
+  // but the actual shebang entry point is bin/gemini-stitch-mcp.js
+  {
+    files: ["src/index.ts"],
+    rules: {
+      "n/hashbang": "off",
+    },
+  },
+
   // Ignore compiled output and dependencies
   {
     ignores: ["dist/", "node_modules/", "coverage/"],
