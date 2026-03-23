@@ -53,7 +53,7 @@
   "dependencies": {
     "@google/genai": "^1.0.0",
     "@modelcontextprotocol/sdk": "^1.12.1",
-    "google-auth-library": "^9.15.1"
+    "google-auth-library": "^10.6.2"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
