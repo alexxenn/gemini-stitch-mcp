@@ -1,6 +1,6 @@
 import type { StitchClient } from "../../clients/stitch-client.js";
 import type { GetHtmlParams, StitchScreen } from "../../types.js";
-import { ScreenCache } from "../../cache/screen-cache.js";
+import { type ScreenCache } from "../../cache/screen-cache.js";
 
 const MAX_OUTPUT_CHARS = 8000;
 

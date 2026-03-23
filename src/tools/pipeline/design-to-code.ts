@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { GeminiClient } from "../../clients/gemini-client.js";
 import type { StitchClient } from "../../clients/stitch-client.js";
 import type { DesignToCodeParams, PipelineContext } from "../../types.js";
-import { ScreenCache } from "../../cache/screen-cache.js";
+import { type ScreenCache } from "../../cache/screen-cache.js";
 import { getConversionTemplate } from "../../prompts/templates.js";
 import { HTML_TO_COMPONENT_PROMPT } from "../../prompts/system-prompts.js";
 

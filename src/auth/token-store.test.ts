@@ -1,6 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
 
 // Mock the fs/promises module before importing the module under test
 vi.mock('node:fs/promises', () => ({

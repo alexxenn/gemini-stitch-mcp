@@ -39,6 +39,16 @@ export default tseslint.config(
       // to avoid false positives with .js extension imports required for Node16 ESM
       "n/no-missing-import": "off",
       "n/no-unsupported-features/es-syntax": "off",
+      // fetch is stable in Node 20+ (undici-based); plugin incorrectly flags it
+      "n/no-unsupported-features/node-builtins": ["error", {
+        ignores: ["fetch"],
+      }],
+      // zod is re-exported by @modelcontextprotocol/sdk; not a direct dependency
+      "n/no-extraneous-import": ["error", {
+        allowModules: ["zod"],
+      }],
+      // Shutdown handlers legitimately need process.exit()
+      "n/no-process-exit": "off",
 
       // ── General ─────────────────────────────────────────────────────────
       // Warn rather than error: MCP servers use console.error for stderr output

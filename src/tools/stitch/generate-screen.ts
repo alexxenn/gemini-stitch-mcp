@@ -1,6 +1,6 @@
 import type { StitchClient } from "../../clients/stitch-client.js";
 import type { GenerateScreenParams } from "../../types.js";
-import { ScreenCache } from "../../cache/screen-cache.js";
+import { type ScreenCache } from "../../cache/screen-cache.js";
 
 export async function stitchGenerateScreen(
   client: StitchClient,

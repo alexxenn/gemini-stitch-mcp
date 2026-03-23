@@ -29,7 +29,7 @@ export class RateLimiter {
       return;
     }
 
-    return new Promise<void>((resolve) => {
+    await new Promise<void>((resolve) => {
       this.queue.push(resolve);
       const waitMs = ((1 - this.tokens) / this.refillRate) * 1000;
       setTimeout(() => this.processQueue(), waitMs);
