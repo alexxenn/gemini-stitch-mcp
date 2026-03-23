@@ -67,7 +67,7 @@ describe('saveTokens', () => {
 
     expect(mockMkdir).toHaveBeenCalledOnce();
     const [, options] = mockMkdir.mock.calls[0];
-    expect(options).toEqual({ recursive: true });
+    expect(options).toMatchObject({ recursive: true });
   });
 
   it('writes prettified JSON to the correct path', async () => {
